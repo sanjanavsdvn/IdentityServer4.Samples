@@ -1,0 +1,65 @@
+﻿@model MvcDeviceFlow.Controllers.LoginModel
+
+<div class="row">
+    <div class="col-xs-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Login using Device</h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p>
+                            Using a browser on another device, visit: @Model.VerificationUri
+                        </p>
+                        <p>
+                            And enter the code: @Model.UserCode
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        @if (Model.QrCode != null)
+                        {
+                            var base64 = Convert.ToBase64String(Model.QrCode);
+                            var imgSrc = string.Format("data:image/gif;base64,{0}", base64);
+                            <img src="@imgSrc" class="img-responsive" alt="QR Code"/>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        function doPoll() {
+            $.ajax({
+                url: '@Model.TokenEndpoint',
+                type: 'POST',
+                contentType: 'application/x-www-form-urlencoded',
+                data: {
+                    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+                    device_code: '@Model.DeviceCode',
+                    client_id: 'device'
+                },
+                success: function (data) {
+                    console.log(data.access_token);
+                    window.location.replace("/Home/LoginCallback?identityToken=" + data.id_token + "&accessToken=" + data.access_token +"&tokenType=" + data.token_type + "&expiresIn=" + data.expires_in + "&refreshToken=" + data.refresh_token);
+                },
+                error: function(data) {
+                    var error = data.responseJSON.error;
+                    if (error === 'authorization_pending') {
+                        setTimeout(doPoll, 5000);
+                    } else if (error === 'expired_token') {
+                        alert('expired!');
+                    } else {
+                        alert('error!');
+                    }
+                }
+            });
+        }
+
+        doPoll();
+    </script>
+}
